@@ -2,10 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marca LE | Panel de Control y Gestión de Stock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Marca LE | Panel de Gestión</title>
   <link rel="stylesheet" href="css/admin.css">
-  <!-- CDN Oficial de Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -14,11 +13,9 @@
   <header class="admin-header">
     <div class="brand">
       <h2>MARCA <span>LE</span></h2>
-      <span class="badge-role">Panel Administrativo</span>
+      <span class="badge-role">Admin</span>
     </div>
-    <div class="admin-nav">
-      <a href="index.html" class="btn-view-store" target="_blank">↗ Ver Tienda Pública</a>
-    </div>
+    <a href="index.html" class="btn-view-store">↗ Ver Tienda</a>
   </header>
 
   <main class="admin-container">
@@ -26,7 +23,7 @@
     <!-- Tarjetas de Métricas Rápidas (KPIs) -->
     <section class="kpi-grid">
       <div class="kpi-card">
-        <h4>Prendas Registradas</h4>
+        <h4>Total</h4>
         <span class="kpi-number" id="kpiTotal">0</span>
       </div>
       <div class="kpi-card">
@@ -47,31 +44,43 @@
       
       <!-- Formulario para Registrar Nueva Prenda -->
       <section class="admin-card form-section">
-        <h3>➕ Registrar Nueva Prenda</h3>
-        <p class="section-desc">Carga la foto, clasifica la selección americana e ingresa medidas reales.</p>
+        <div class="card-title-group">
+          <h3>➕ Nueva Prenda</h3>
+          <p class="section-desc">El código se generará automáticamente.</p>
+        </div>
 
         <form id="formPrenda">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="codigo">Código Único *</label>
-              <input type="text" id="codigo" placeholder="Ej: LE-004" required>
-            </div>
-            <div class="form-group">
-              <label for="categoriaMano">Nivel de Selección *</label>
-              <select id="categoriaMano" required>
-                <option value="primera">1ra Mano (Nueva / Impecable)</option>
-                <option value="segunda" selected>2da Mano (Seleccionada)</option>
-                <option value="tercera">3ra Mano (Paca / Económica)</option>
-              </select>
+          
+          <!-- Botón Interactivo de Fotografía con Vista Previa -->
+          <div class="form-group">
+            <label>Foto de la Prenda *</label>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('foto').click()">
+              <input type="file" id="foto" accept="image/*" required style="display: none;">
+              <div class="upload-placeholder" id="uploadPlaceholder">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c9933b" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                <span>Toca aquí para tomar o subir foto</span>
+              </div>
+              <img id="imgPreview" class="preview-img" style="display: none;" alt="Vista previa">
             </div>
           </div>
 
           <div class="form-group">
-            <label for="nombre">Nombre / Descripción de la Prenda *</label>
-            <input type="text" id="nombre" placeholder="Ej: Chamarra Cuero Vintage Oversize" required>
+            <label for="nombre">Nombre o Descripción *</label>
+            <input type="text" id="nombre" placeholder="Ej: Chamarra Rompevientos Vintage" required>
           </div>
 
           <div class="form-row">
+            <div class="form-group">
+              <label for="categoriaMano">Nivel de Mano *</label>
+              <select id="categoriaMano" required>
+                <option value="primera">1ra Mano</option>
+                <option value="segunda" selected>2da Mano</option>
+                <option value="tercera">3ra Mano</option>
+              </select>
+            </div>
             <div class="form-group">
               <label for="tipoPrenda">Tipo de Prenda *</label>
               <select id="tipoPrenda" required>
@@ -81,18 +90,18 @@
                 <option value="Short">Short</option>
                 <option value="Camisa">Camisa</option>
                 <option value="Vestido">Vestido</option>
-                <option value="Formal">Ropa Formal</option>
+                <option value="Formal">Formal</option>
               </select>
-            </div>
-            <div class="form-group">
-              <label for="marca">Marca Americana</label>
-              <input type="text" id="marca" placeholder="Ej: Tommy Hilfiger, Levi's, Nike">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="talla">Talla Etiqueta *</label>
+              <label for="marca">Marca</label>
+              <input type="text" id="marca" placeholder="Ej: Nike, Levi's">
+            </div>
+            <div class="form-group">
+              <label for="talla">Talla *</label>
               <select id="talla" required>
                 <option value="XS">XS</option>
                 <option value="S">S</option>
@@ -100,38 +109,25 @@
                 <option value="L">L</option>
                 <option value="XL">XL</option>
                 <option value="XXL">XXL</option>
-                <option value="Única">Talla Única</option>
+                <option value="Única">Única</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="precio">Precio (Bs.) *</label>
-              <input type="number" id="precio" step="0.5" placeholder="Ej: 65.00" required>
-            </div>
           </div>
 
           <div class="form-group">
-            <label for="medidas">Medidas Reales con Cinta Métrica (Fit-Check) *</label>
-            <input type="text" id="medidas" placeholder="Ej: Axila a axila: 56cm | Largo: 72cm" required>
-            <small class="hint">Evita dudas en tallas americanas grandes o reducidas.</small>
+            <label for="precio">Precio en Bolivianos (Bs.) *</label>
+            <input type="number" id="precio" step="0.5" placeholder="Ej: 50" required>
           </div>
 
-          <div class="form-group">
-            <label for="foto">Fotografía de la Prenda *</label>
-            <input type="file" id="foto" accept="image/*" required>
-            <small class="hint">Se guardará automáticamente en el Storage de Supabase.</small>
-          </div>
-
-          <button type="submit" class="btn-submit" id="btnGuardar">Guardar y Publicar Prenda</button>
+          <button type="submit" class="btn-submit" id="btnGuardar">Publicar Prenda</button>
         </form>
       </section>
 
-      <!-- Tabla de Gestión de Inventario -->
+      <!-- Inventario -->
       <section class="admin-card table-section">
         <div class="table-header">
-          <h3>📦 Inventario Actual</h3>
-          <div class="table-search">
-            <input type="text" id="searchTable" placeholder="Filtrar por código o nombre...">
-          </div>
+          <h3>📦 Inventario Registrado</h3>
+          <input type="text" id="searchTable" class="table-search-input" placeholder="Buscar prenda...">
         </div>
 
         <div class="table-responsive">
@@ -141,15 +137,14 @@
                 <th>Foto</th>
                 <th>Código</th>
                 <th>Prenda</th>
-                <th>Mano</th>
                 <th>Precio</th>
                 <th>Estado</th>
-                <th>Acciones</th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody id="inventoryBody">
               <tr>
-                <td colspan="7" class="text-center">Cargando inventario...</td>
+                <td colspan="6" class="text-center">Cargando inventario...</td>
               </tr>
             </tbody>
           </table>

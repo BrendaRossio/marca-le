@@ -3,16 +3,46 @@ let prendasAdmin = [];
 document.addEventListener("DOMContentLoaded", () => {
   cargarInventario();
 
-  // Envío del Formulario
-  const form = document.getElementById("formPrenda");
-  form.addEventListener("submit", registrarPrenda);
+  // Vista previa al seleccionar imagen
+  const inputFoto = document.getElementById("foto");
+  inputFoto.addEventListener("change", previewImagen);
 
-  // Filtro de búsqueda en la tabla
-  const searchInput = document.getElementById("searchTable");
-  searchInput.addEventListener("input", filtrarTabla);
+  // Drag and drop visual
+  const uploadZone = document.getElementById("uploadZone");
+  uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.style.borderColor = "#c9933b"; });
+  uploadZone.addEventListener("dragleave", () => { uploadZone.style.borderColor = "#d1d5db"; });
+  uploadZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    uploadZone.style.borderColor = "#d1d5db";
+    if (e.dataTransfer.files.length) {
+      inputFoto.files = e.dataTransfer.files;
+      previewImagen();
+    }
+  });
+
+  // Guardar formulario
+  document.getElementById("formPrenda").addEventListener("submit", registrarPrenda);
+  document.getElementById("searchTable").addEventListener("input", filtrarTabla);
 });
 
-// 1. Cargar todas las prendas desde Supabase
+// Vista previa interactiva
+function previewImagen() {
+  const file = document.getElementById("foto").files[0];
+  const placeholder = document.getElementById("uploadPlaceholder");
+  const imgPreview = document.getElementById("imgPreview");
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imgPreview.src = e.target.result;
+      imgPreview.style.display = "block";
+      placeholder.style.display = "none";
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+// Cargar inventario desde Supabase
 async function cargarInventario() {
   const tbody = document.getElementById("inventoryBody");
 
@@ -28,17 +58,17 @@ async function cargarInventario() {
     actualizarKPIs(prendasAdmin);
     renderizarTabla(prendasAdmin);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="color: red;">Error: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color: red;">Error: ${err.message}</td></tr>`;
   }
 }
 
-// 2. Renderizar filas de la tabla
+// Renderizar tabla
 function renderizarTabla(lista) {
   const tbody = document.getElementById("inventoryBody");
   tbody.innerHTML = "";
 
   if (lista.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center">No hay prendas registradas con ese criterio.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center">No hay prendas registradas.</td></tr>`;
     return;
   }
 
@@ -46,13 +76,12 @@ function renderizarTabla(lista) {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td><img src="${item.imagen_url}" class="thumb-img" alt="${item.nombre}" onerror="this.src='https://via.placeholder.com/44'"></td>
+      <td><img src="${item.imagen_url}" class="thumb-img" alt="${item.nombre}" onerror="this.src='https://via.placeholder.com/45'"></td>
       <td><strong>${item.codigo_prenda}</strong></td>
       <td>
         <div style="font-weight: 600;">${item.nombre}</div>
         <small style="color: var(--text-muted);">${item.marca || 'Americana'} • Talla ${item.talla_etiqueta}</small>
       </td>
-      <td><span style="text-transform: capitalize;">${item.categoria_mano}</span></td>
       <td><strong>${parseFloat(item.precio).toFixed(2)} Bs.</strong></td>
       <td>
         <select class="status-select" onchange="cambiarEstado('${item.id}', this.value)">
@@ -69,69 +98,69 @@ function renderizarTabla(lista) {
   });
 }
 
-// 3. Subir foto a Supabase Storage y registrar registro en BD
+// Registrar nueva prenda con CÓDIGO AUTOMÁTICO
 async function registrarPrenda(e) {
   e.preventDefault();
   const btn = document.getElementById("btnGuardar");
   btn.disabled = true;
-  btn.innerText = "Subiendo imagen y registrando...";
+  btn.innerText = "Subiendo y publicando...";
 
   try {
     const file = document.getElementById("foto").files[0];
-    if (!file) throw new Error("Debes seleccionar una imagen para la prenda.");
+    if (!file) throw new Error("Selecciona una fotografía para la prenda.");
 
-    // Nombre de archivo único
+    // Generar código automático secuencial/único: LE + 3 números aleatorios
+    const codigoGenerado = "LE-" + Math.floor(100 + Math.random() * 900);
+
+    // Subir imagen al Storage
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${fileExt}`;
     const filePath = `prendas/${fileName}`;
 
-    // A. Subir imagen al bucket público 'prendas-le'
     const { error: uploadError } = await supabaseClient.storage
       .from("prendas-le")
       .upload(filePath, file, { cacheControl: "3600", upsert: false });
 
     if (uploadError) throw new Error(`Error en Storage: ${uploadError.message}`);
 
-    // B. Obtener la URL pública de la imagen
     const { data: publicUrlData } = supabaseClient.storage
       .from("prendas-le")
       .getPublicUrl(filePath);
 
-    const publicUrl = publicUrlData.publicUrl;
-
-    // C. Armar el objeto para insertar en la tabla
+    // Guardar en la tabla prendas (sin medidas_cm obligatorias)
     const nuevaPrenda = {
-      codigo_prenda: document.getElementById("codigo").value.trim().toUpperCase(),
+      codigo_prenda: codigoGenerado,
       categoria_mano: document.getElementById("categoriaMano").value,
       nombre: document.getElementById("nombre").value.trim(),
       tipo_prenda: document.getElementById("tipoPrenda").value,
       marca: document.getElementById("marca").value.trim() || "Americana",
       talla_etiqueta: document.getElementById("talla").value,
       precio: parseFloat(document.getElementById("precio").value),
-      medidas_cm: document.getElementById("medidas").value.trim(),
-      imagen_url: publicUrl,
+      medidas_cm: "Disponible en puesto de feria",
+      imagen_url: publicUrlData.publicUrl,
       estado: "disponible"
     };
 
-    // D. Insertar en la base de datos
     const { error: insertError } = await supabaseClient
       .from("prendas")
       .insert([nuevaPrenda]);
 
     if (insertError) throw new Error(`Error en BD: ${insertError.message}`);
 
-    alert("¡Prenda registrada y publicada con éxito en Marca LE!");
+    alert(`¡Prenda registrada con éxito con el código ${codigoGenerado}!`);
     document.getElementById("formPrenda").reset();
+    document.getElementById("imgPreview").style.display = "none";
+    document.getElementById("uploadPlaceholder").style.display = "flex";
     cargarInventario();
   } catch (err) {
     alert(`Ocurrió un error: ${err.message}`);
   } finally {
     btn.disabled = false;
-    btn.innerText = "Guardar y Publicar Prenda";
+    btn.innerText = "Publicar Prenda";
   }
 }
 
-// 4. Cambiar estado rápido (Disponible / Reservado / Vendido)
+// Cambiar estado rápido
 async function cambiarEstado(id, nuevoEstado) {
   try {
     const { error } = await supabaseClient
@@ -141,20 +170,18 @@ async function cambiarEstado(id, nuevoEstado) {
 
     if (error) throw error;
 
-    // Actualizar en memoria local
     const item = prendasAdmin.find(p => p.id === id);
     if (item) item.estado = nuevoEstado;
     actualizarKPIs(prendasAdmin);
   } catch (err) {
-    alert(`No se pudo actualizar el estado: ${err.message}`);
+    alert(`Error al actualizar estado: ${err.message}`);
     cargarInventario();
   }
 }
 
-// 5. Eliminar prenda
+// Eliminar prenda
 async function eliminarPrenda(id, codigo) {
-  const confirmacion = confirm(`¿Estás seguro de eliminar la prenda con código ${codigo}?`);
-  if (!confirmacion) return;
+  if (!confirm(`¿Eliminar la prenda ${codigo}?`)) return;
 
   try {
     const { error } = await supabaseClient
@@ -168,11 +195,10 @@ async function eliminarPrenda(id, codigo) {
     actualizarKPIs(prendasAdmin);
     renderizarTabla(prendasAdmin);
   } catch (err) {
-    alert(`Error al eliminar: ${err.message}`);
+    alert(`Error: ${err.message}`);
   }
 }
 
-// 6. Contadores métricos (KPIs)
 function actualizarKPIs(lista) {
   document.getElementById("kpiTotal").innerText = lista.length;
   document.getElementById("kpiDisponibles").innerText = lista.filter(p => p.estado === 'disponible').length;
@@ -180,7 +206,6 @@ function actualizarKPIs(lista) {
   document.getElementById("kpiVendidas").innerText = lista.filter(p => p.estado === 'vendido').length;
 }
 
-// 7. Búsqueda en vivo en la tabla
 function filtrarTabla() {
   const q = document.getElementById("searchTable").value.toLowerCase().trim();
   const filtrados = prendasAdmin.filter(p => 
